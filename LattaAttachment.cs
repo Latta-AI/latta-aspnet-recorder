@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
+using Newtonsoft.Json;
 using System.Diagnostics;
+using System.Dynamic;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 
@@ -46,13 +48,15 @@ namespace LattaASPNet
             return (freeMemory, totalMemory);
         }
 
-        public string ToString()
+        public override string ToString()
         {
             var request = _context.Request;
             var response = _context.Response;
 
             var (freeMemory, totalMemory) = GetRam();
             var cpuLoad = GetCpuLoad();
+
+            var queryObject = new Dictionary<string, string>(request.Query.Select(param => new KeyValuePair<string, string>(param.Key, param.Value!)));
 
             var record = new
             {
@@ -67,7 +71,7 @@ namespace LattaASPNet
                         method = request.Method,
                         url = $"{(request.Scheme)}://{request.Host}{request.Path}{request.QueryString}",
                         route = request.Path,
-                        query = request.Query,
+                        query = queryObject,
                         headers = request.Headers.ToDictionary(h => h.Key, h => h.Value.ToString()),
                         body = new StreamReader(request.Body).ReadToEndAsync().Result
                     },
@@ -85,7 +89,7 @@ namespace LattaASPNet
                     {
                         free_memory = freeMemory,
                         total_memory = totalMemory,
-                        cpu_usage = cpuLoad
+                        cpu_usage = cpuLoad,
                     },
                     logs = new
                     {
@@ -94,7 +98,7 @@ namespace LattaASPNet
                 }
             };
 
-            return JsonSerializer.Serialize(record);
+            return JsonConvert.SerializeObject(record);
         }
     }
 }
